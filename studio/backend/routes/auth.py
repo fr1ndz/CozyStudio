@@ -365,7 +365,17 @@ def identity(nonce: str, request: Request) -> dict:
 
 @router.get("/status", response_model = AuthStatusResponse)
 async def auth_status() -> AuthStatusResponse:
-    """Auth initialization state; ``default_username`` is exposed for first-boot UI prefill only."""
+    """Auth initialization state; ``default_username`` is exposed for first-boot UI prefill only.
+
+    In open-mode (UNSLOTH_STUDIO_OPEN_MODE=skip-auth), always reports initialized
+    with no password change required so the frontend skips all auth screens."""
+    from auth.authentication import _OPEN_MODE
+    if _OPEN_MODE:
+        return AuthStatusResponse(
+            initialized = True,
+            default_username = "open-mode",
+            requires_password_change = False,
+        )
     return AuthStatusResponse(
         initialized = storage.is_initialized(),
         default_username = storage.DEFAULT_ADMIN_USERNAME,

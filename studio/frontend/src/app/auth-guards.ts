@@ -9,6 +9,7 @@ import {
   hasRefreshToken,
   mustChangePassword,
   refreshSession,
+  setOpenMode,
   setMustChangePassword,
 } from "@/features/auth";
 
@@ -34,6 +35,18 @@ function hasFreshAuthStatus(): boolean {
   );
 }
 
+// Open-mode detection: backend returns default_username="open-mode" when
+// UNSLOTH_STUDIO_OPEN_MODE=skip-auth is set. Cached alongside auth status.
+let isOpenMode = false;
+
+export function isAuthOpenMode(): boolean {
+  return isOpenMode;
+}
+
+interface AuthStatusWithUsername extends AuthStatus {
+  default_username?: string;
+}
+
 async function fetchAuthStatus(): Promise<AuthStatus> {
   if (authStatusRequest) return authStatusRequest;
 
@@ -46,10 +59,13 @@ async function fetchAuthStatus(): Promise<AuthStatus> {
           requires_password_change: mustChangePassword(),
         };
       }
-      const status = (await res.json()) as AuthStatus;
+      const status = (await res.json()) as AuthStatusWithUsername;
       authStatusCheckedAt = Date.now();
+      // Detect open-mode from server response and propagate to session module
+      isOpenMode = status.default_username === "open-mode";
+      setOpenMode(isOpenMode);
       // Server truth wins; keep localStorage in sync both ways.
-      if (status.requires_password_change !== mustChangePassword()) {
+      if (!isOpenMode && status.requires_password_change !== mustChangePassword()) {
         setMustChangePassword(status.requires_password_change);
       }
       return status;
@@ -76,6 +92,10 @@ export async function requireAuth(): Promise<void> {
     return;
   }
 
+  // Open-mode: skip all auth checks, let the user straight into the app.
+  const status = await fetchAuthStatus();
+  if (isOpenMode) return;
+
   if (await hasActiveSession()) {
     // Reconcile periodically so local-only routes cannot outlive a server-side
     // password-change requirement, while nearby route switches stay local.
@@ -99,6 +119,9 @@ export async function requireGuest(): Promise<void> {
   if (isTauri) {
     throw redirect({ to: "/chat" });
   }
+  // Open-mode: always redirect to app, never show login/change-password.
+  await fetchAuthStatus();
+  if (isOpenMode) throw redirect({ to: "/chat" });
   if (!(await hasActiveSession())) return;
   // Reconcile localStorage before routing.
   await fetchAuthStatus();
@@ -110,7 +133,9 @@ export async function requirePasswordChangeFlow(): Promise<void> {
     throw redirect({ to: "/chat" });
   }
 
+  // Open-mode: no password change needed, go straight to app.
   const status = await fetchAuthStatus();
+  if (isOpenMode) throw redirect({ to: "/chat" });
   if (status.requires_password_change || mustChangePassword()) return;
   if (await hasActiveSession()) {
     throw redirect({ to: getPostAuthRoute() });

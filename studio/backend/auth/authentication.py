@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
@@ -8,6 +9,11 @@ from typing import Optional, Tuple
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import jwt
+
+# Open-mode bypass: set UNSLOTH_STUDIO_OPEN_MODE=skip-auth to disable all
+# authentication. Designed for local-only single-user development / Aether-Studio
+# fork compatibility. NEVER enable on network-accessible deployments.
+_OPEN_MODE = os.environ.get("UNSLOTH_STUDIO_OPEN_MODE", "").strip().lower() == "skip-auth"
 
 from .storage import (
     API_KEY_PREFIX,
@@ -153,7 +159,12 @@ def reload_secret() -> None:
 
 
 async def get_current_subject(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Validate JWT and require the password-change flow to be completed."""
+    """Validate JWT and require the password-change flow to be completed.
+
+    In open-mode (UNSLOTH_STUDIO_OPEN_MODE=skip-auth), returns a synthetic
+    subject without validating any bearer token."""
+    if _OPEN_MODE:
+        return "open-mode"
     subject, _generation = await _get_current_credential(
         credentials,
         allow_password_change = False,
@@ -189,7 +200,11 @@ async def authenticated_via_api_key(
 async def get_current_subject_allow_password_change(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
-    """Validate JWT but allow access to the password-change endpoint."""
+    """Validate JWT but allow access to the password-change endpoint.
+
+    In open-mode, returns synthetic subject (password change is irrelevant)."""
+    if _OPEN_MODE:
+        return "open-mode"
     subject, _generation = await _get_current_credential(
         credentials,
         allow_password_change = True,

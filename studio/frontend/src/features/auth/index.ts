@@ -15,6 +15,7 @@ export {
   markOnboardingDone,
   mustChangePassword,
   resetOnboardingDone,
+  setOpenMode,
   setMustChangePassword,
   storeAuthTokens,
 } from "./session";
