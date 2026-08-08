@@ -16,12 +16,19 @@ function canUseStorage(): boolean {
   return typeof window !== "undefined";
 }
 
+// Open-mode flag set by auth-guards after /api/auth/status confirms it.
+// Imported lazily to avoid circular deps; falls back to false before first check.
+let _openMode = false;
+export function setOpenMode(value: boolean): void { _openMode = value; }
+
 export function hasAuthToken(): boolean {
+  if (_openMode) return true;
   if (!canUseStorage()) return false;
   return Boolean(localStorage.getItem(AUTH_TOKEN_KEY));
 }
 
 export function hasRefreshToken(): boolean {
+  if (_openMode) return true;
   if (!canUseStorage()) return false;
   return Boolean(localStorage.getItem(AUTH_REFRESH_TOKEN_KEY));
 }

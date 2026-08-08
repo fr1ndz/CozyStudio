@@ -10,6 +10,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import jwt
 
+# Open-mode bypass: set UNSLOTH_STUDIO_OPEN_MODE=skip-auth to disable all
+# authentication. Designed for local-only single-user development / Aether-Studio
+# fork compatibility. NEVER enable on network-accessible deployments.
+_OPEN_MODE = os.environ.get("UNSLOTH_STUDIO_OPEN_MODE", "").strip().lower() == "skip-auth"
+
 from .storage import (
     API_KEY_PREFIX,
     credential_generation,
@@ -154,7 +159,12 @@ def reload_secret() -> None:
 
 
 async def get_current_subject(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Validate JWT and require the password-change flow to be completed."""
+    """Validate JWT and require the password-change flow to be completed.
+
+    In open-mode (UNSLOTH_STUDIO_OPEN_MODE=skip-auth or UNSLOTH_STUDIO_NO_AUTH=***),
+    returns a synthetic subject without validating any bearer token."""
+    if _OPEN_MODE:
+        return "open-mode"
     if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
         return "guest"
     subject, _generation = await _get_current_credential(
@@ -188,6 +198,8 @@ async def authenticated_via_api_key(
     Lets routes treat programmatic API callers differently from the Unsloth UI
     (e.g. refuse a teardown the UI would allow).
     """
+    if _OPEN_MODE:
+        return False
     if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
         return False
     return bool(credentials and credentials.credentials.startswith(API_KEY_PREFIX))
@@ -196,7 +208,11 @@ async def authenticated_via_api_key(
 async def get_current_subject_allow_password_change(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
-    """Validate JWT but allow access to the password-change endpoint."""
+    """Validate JWT but allow access to the password-change endpoint.
+
+    In open-mode, returns synthetic subject (password change is irrelevant)."""
+    if _OPEN_MODE:
+        return "open-mode"
     if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
         return "guest"
     subject, _generation = await _get_current_credential(
