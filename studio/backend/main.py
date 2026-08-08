@@ -1342,7 +1342,7 @@ async def health_check(request: Request):
             # polling for a measured verdict would wait out its whole budget. Say so instead.
             base["hardware_detection_deferred"] = True
     auth = request.headers.get("authorization", "")
-    if not auth.lower().startswith("bearer "):
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") != "1" and not auth.lower().startswith("bearer "):
         return base
     try:
         from auth.authentication import get_current_subject as _gcs

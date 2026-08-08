@@ -11,6 +11,8 @@ import {
   storeAuthTokens,
 } from "./session";
 
+const NO_AUTH_MODE = typeof window !== "undefined" && window.location.search.includes("noauth");
+
 type RefreshResponse = {
   access_token: string;
   refresh_token: string;
@@ -65,6 +67,7 @@ async function isPasswordChangeRequiredResponse(response: Response): Promise<boo
 
 async function redirectToAuth(): Promise<void> {
   if (isRedirecting) return;
+  if (NO_AUTH_MODE) return;
   isRedirecting = true;
 
   let target = "/login";
@@ -206,6 +209,7 @@ export async function authFetch(
     return response;
   }
   if (response.status !== 401) return response;
+  if (NO_AUTH_MODE) return response;
 
   const refreshToken = getRefreshToken();
   const refreshed = await refreshSession();

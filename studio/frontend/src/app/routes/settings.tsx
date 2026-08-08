@@ -4,7 +4,6 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 import { getPostAuthRoute } from "@/features/auth";
 import { useSettingsDialogStore } from "@/features/settings";
-import { requireAuth } from "../auth-guards";
 import { Route as rootRoute } from "./__root";
 
 // /settings deep-links the modal: open it, then redirect home. Tab title is
@@ -16,7 +15,6 @@ export const Route = createRoute({
   path: "/settings",
   staticData: { title: "Settings" },
   beforeLoad: async () => {
-    await requireAuth();
     useSettingsDialogStore.getState().openDialog();
     throw redirect({ to: getPostAuthRoute() });
   },

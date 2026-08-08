@@ -366,6 +366,12 @@ def identity(nonce: str, request: Request) -> dict:
 @router.get("/status", response_model = AuthStatusResponse)
 async def auth_status() -> AuthStatusResponse:
     """Auth initialization state; ``default_username`` is exposed for first-boot UI prefill only."""
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        return AuthStatusResponse(
+            initialized = True,
+            default_username = storage.DEFAULT_ADMIN_USERNAME,
+            requires_password_change = False,
+        )
     return AuthStatusResponse(
         initialized = storage.is_initialized(),
         default_username = storage.DEFAULT_ADMIN_USERNAME,

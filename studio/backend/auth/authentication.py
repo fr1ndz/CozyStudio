@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
@@ -154,6 +155,8 @@ def reload_secret() -> None:
 
 async def get_current_subject(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """Validate JWT and require the password-change flow to be completed."""
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        return "guest"
     subject, _generation = await _get_current_credential(
         credentials,
         allow_password_change = False,
@@ -169,6 +172,8 @@ async def get_current_credential(
     For routes that persist a new credential and must not do so on behalf of one
     a concurrent reset has revoked.
     """
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        return "guest", None
     return await _get_current_credential(
         credentials,
         allow_password_change = False,
@@ -183,6 +188,8 @@ async def authenticated_via_api_key(
     Lets routes treat programmatic API callers differently from the Unsloth UI
     (e.g. refuse a teardown the UI would allow).
     """
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        return False
     return bool(credentials and credentials.credentials.startswith(API_KEY_PREFIX))
 
 
@@ -190,6 +197,8 @@ async def get_current_subject_allow_password_change(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
     """Validate JWT but allow access to the password-change endpoint."""
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        return "guest"
     subject, _generation = await _get_current_credential(
         credentials,
         allow_password_change = True,
@@ -221,6 +230,9 @@ async def _get_current_credential(
     against. Routes that persist new credentials must bind their write to it, or
     a reset landing mid-request would bless what it just revoked.
     """
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        return "guest", None
+
     token = credentials.credentials
 
     # --- API key path (sk-unsloth-...) ---

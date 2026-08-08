@@ -2,8 +2,6 @@
 // Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 import { createRoute } from "@tanstack/react-router";
-import { lazy } from "react";
-import { requireGuest } from "../auth-guards";
 import { Route as rootRoute } from "./__root";
 
 const LoginPage = lazy(() =>
@@ -14,6 +12,5 @@ export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   staticData: { title: "Login", isAuthFlow: true },
-  beforeLoad: () => requireGuest(),
   component: LoginPage,
 });

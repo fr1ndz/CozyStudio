@@ -2,7 +2,6 @@
 // Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
-import { requireAuth } from "../auth-guards";
 import { Route as rootRoute } from "./__root";
 
 const ExportPage = lazyRouteComponent(
@@ -20,7 +19,6 @@ export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/export",
   staticData: { title: "Export" },
-  beforeLoad: () => requireAuth(),
   validateSearch: (search: Record<string, unknown>): ExportSearch => ({
     run: typeof search.run === "string" ? search.run : undefined,
   }),

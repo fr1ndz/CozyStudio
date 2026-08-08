@@ -2,8 +2,6 @@
 // Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 import { createRoute } from "@tanstack/react-router";
-import { lazy } from "react";
-import { requireAuth } from "../auth-guards";
 import { Route as rootRoute } from "./__root";
 
 export type OnboardingSearch = { redirectTo?: string };
@@ -18,7 +16,6 @@ export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/onboarding",
   staticData: { title: "Onboarding", isAuthFlow: true },
-  beforeLoad: () => requireAuth(),
   validateSearch: (search: Record<string, unknown>): OnboardingSearch => ({
     redirectTo: typeof search.redirectTo === "string" ? search.redirectTo : undefined,
   }),

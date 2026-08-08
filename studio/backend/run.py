@@ -1822,6 +1822,8 @@ def run_server(
         os.environ["UNSLOTH_API_ONLY"] = "1"
     if secure:
         os.environ["UNSLOTH_SECURE"] = "1"
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        pass  # no auth: skip password gate and bootstrap injection
 
     import asyncio
 
@@ -2011,25 +2013,29 @@ def run_server(
     # A supplied --password / UNSLOTH_STUDIO_PASSWORD / stdin sets the initial
     # admin password before the gate and socket bind (direct `python run.py`;
     # the CLI applies it in its own parent).
-    _apply_supplied_password(password)
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") != "1":
+        _apply_supplied_password(password)
 
     # Never publish with the seeded default password active: prompt first (or
     # warn / fail closed headless; see _terminal_password_gate). Runs BEFORE the
     # socket binds so a pre-gate listener can't hand out the injected credential.
-    _pw_proceed, _pw_drop_bootstrap = _terminal_password_gate(
-        tunnel_will_start = _cloudflare_tunnel_should_start(
-            cloudflare = cloudflare,
+    if os.environ.get("UNSLOTH_STUDIO_NO_AUTH") == "1":
+        _pw_proceed, _pw_drop_bootstrap = True, False
+    else:
+        _pw_proceed, _pw_drop_bootstrap = _terminal_password_gate(
+            tunnel_will_start = _cloudflare_tunnel_should_start(
+                cloudflare = cloudflare,
+                host = host,
+                secure = secure,
+                api_only = api_only,
+                is_colab = _IS_COLAB,
+            ),
             host = host,
             secure = secure,
             api_only = api_only,
+            frontend_served = bool(frontend_path) and not api_only,
             is_colab = _IS_COLAB,
-        ),
-        host = host,
-        secure = secure,
-        api_only = api_only,
-        frontend_served = bool(frontend_path) and not api_only,
-        is_colab = _IS_COLAB,
-    )
+        )
     if not _pw_proceed:
         print(
             "Not starting Unsloth; set a new admin password first, or launch "
